@@ -1,0 +1,279 @@
+<!--Distributed under GNU Public License version 3-->
+<!DOCTYPE html>
+<html>
+<head>
+<style>
+body {background-color: #99CCFF}
+</style>
+<meta http-equiv="content-type" content="text/html; charset=UTF-8">
+<title>Twinulator</title>
+</head>
+<script>
+
+// additive genetic effects
+var A = 1/3;
+// shared environment
+var C = 1/3;
+// non-shared environment
+var E = 1/3;
+
+// number of siblings of each type
+var n = 100000
+
+// random normal
+function normal() {
+    var u = 0, v = 0;
+    while(u === 0) u = Math.random(); //Converting [0,1) to (0,1)
+    while(v === 0) v = Math.random();
+    return Math.sqrt( -2.0 * Math.log( u ) ) * Math.cos( 2.0 * Math.PI * v );
+}
+
+function pearson(x, y) {
+    var shortestArrayLength = 0;
+    if(x.length == y.length) {
+        shortestArrayLength = x.length;
+    } else if(x.length > y.length) {
+        shortestArrayLength = y.length;
+        console.error('x has more items in it, the last ' + (x.length - shortestArrayLength) + ' item(s) will be ignored');
+    } else {
+        shortestArrayLength = x.length;
+        console.error('y has more items in it, the last ' + (y.length - shortestArrayLength) + ' item(s) will be ignored');
+    }
+    var xy = [];
+    var x2 = [];
+    var y2 = [];
+    for(var i=0; i<shortestArrayLength; i++) {
+        xy.push(x[i] * y[i]);
+        x2.push(x[i] * x[i]);
+        y2.push(y[i] * y[i]);
+    }
+    var sum_x = 0;
+    var sum_y = 0;
+    var sum_xy = 0;
+    var sum_x2 = 0;
+    var sum_y2 = 0;
+    for(var i=0; i< shortestArrayLength; i++) {
+        sum_x += x[i];
+        sum_y += y[i];
+        sum_xy += xy[i];
+        sum_x2 += x2[i];
+        sum_y2 += y2[i];
+    }
+    var step1 = (shortestArrayLength * sum_xy) - (sum_x * sum_y);
+    var step2 = (shortestArrayLength * sum_x2) - (sum_x * sum_x);
+    var step3 = (shortestArrayLength * sum_y2) - (sum_y * sum_y);
+    var step4 = Math.sqrt(step2 * step3);
+    var answer = step1 / step4;
+    return answer;
+}
+
+function init()
+{
+
+
+}
+
+var mtwins1 = [];
+var mtwins2 = [];
+var dtwins1 = [];
+var dtwins2 = [];
+function simulate()
+{
+	var groups = [[mtwins1, mtwins2],[dtwins1, dtwins2]];
+	for (var i = 0; i < groups.length; i++)
+	{
+		for (var j = 0; j < n; j++)
+		{
+			var aterm1 = A * normal();
+			// uh, I just treated both groups the same...need to fix that at some point
+			var aterm2 = 0.5 * aterm1 + 0.5 * A * normal();
+			var cterm1 = C * normal();
+			var cterm2 = C * normal();
+			var eterm1 = E * normal();
+			var eterm2 = E * normal();
+
+			var sibling1 =  aterm1 + cterm1 + eterm1;
+			var sibling2 = aterm2 + cterm2 + eterm2;
+
+			groups[i][0].push(sibling1);
+			groups[i][1].push(sibling2);
+		}
+	}
+
+	var rMZ = pearson(mtwins[0], mtwins[1]);
+	var rDZ = pearson(dtwins[0], dtwins[1]);
+
+    var A1 = 2 * (rMZ - rDZ);
+    var C = 2 * rDZ - rMZ;
+	var E = 1 - rMZ;
+
+}
+ 
+
+/*
+
+data twins;
+
+     A = 0.5;
+
+     C = 0.15;
+
+     E = 0.35;
+
+
+     mean = 0;
+
+     std = 1;
+
+     trials = 100000;
+
+     *Assumptions of ACE model, can be tweaked;
+
+     mza = 1; *identical twins share all genes;
+
+     dza = 0.5; *fraternal twins share half of genes;
+
+     mzc = 1; *identical twins share all shared environment;
+
+     dzc = 1; *fraternal twins share all shared environment;
+
+     mze = 0; *identical twins share no unshared environment;
+
+     dze = 0; *fraternal twins share no unshared environment;
+
+     *simulate data;
+
+     do family = 1 to 100000;
+
+           if (family <= trials/2) then identical = 1;
+
+           else identical = 0;
+
+           if identical then do;
+
+                genes0 = sqrt(mza*A) * rand('normal',mean,std);
+
+                genes1 = genes0 + sqrt((1-mza)*A) * rand('normal',mean,std);
+
+                genes2 = genes0 + sqrt((1-mza)*A) * rand('normal',mean,std);
+
+                shared0 = sqrt(mzc*C) * rand('normal',mean,std);
+
+                shared1 = shared0 + sqrt((1-mzc)*C) * rand('normal',mean,std);
+
+                shared2 = shared0 + sqrt((1-mzc)*C) * rand('normal',mean,std);
+
+                luck0 = sqrt(mze*E) * rand('normal',mean,std);
+
+                luck1 = luck0 + sqrt((1-mze)*E) * rand('normal',mean,std);
+
+                luck2 = luck0 + sqrt((1-mze)*E) * rand('normal',mean,std);
+
+           end; else do;
+
+                genes0 = sqrt(dza*A) * rand('normal',mean,std);
+
+                genes1 = genes0 + sqrt((1-dza)*A) * rand('normal',mean,std);
+
+                genes2 = genes0 + sqrt((1-dza)*A) * rand('normal',mean,std);
+
+                shared0 = sqrt(dzc*C) * rand('normal',mean,std);
+
+                shared1 = shared0 + sqrt((1-dzc)*C) * rand('normal',mean,std);
+
+                shared2 = shared0 + sqrt((1-dzc)*C) * rand('normal',mean,std);
+
+                luck0 = sqrt(dze*E) * rand('normal',mean,std);
+
+                luck1 = luck0 + sqrt((1-dze)*E) * rand('normal',mean,std);
+
+                luck2 = luck0 + sqrt((1-dze)*E) * rand('normal',mean,std);
+
+           end;
+
+           outcome1 = genes1 + shared1 + luck1 + genes1 * shared1;
+
+           outcome2 = genes2 + shared2 + luck2 + genes2 * shared2;
+
+           output;
+
+     end;
+
+run;
+
+ 
+
+proc corr data = twins out = rMZ noprint;
+
+     where identical;
+
+     var outcome1 outcome2;
+
+run;
+
+ 
+
+proc corr data = twins out = rDZ noprint;
+
+     where not identical;
+
+     var outcome1 outcome2;
+
+run;
+
+ 
+
+data _null_;
+
+     set rMZ;
+
+     where _type_ = "CORR" and _name_ = "outcome1";
+
+     call symput("rMZ",outcome2);
+
+run;
+
+ 
+
+data _null_;
+
+     set rDZ;
+
+     where _type_ = "CORR" and _name_ = "outcome1";
+
+     call symput("rDZ",outcome2);
+
+run;
+
+ 
+
+data estimates;
+
+     rMZ = &rMZ.;
+
+     rDZ = &rDZ.;
+
+     A = 2 * (rMZ - rDZ);
+
+     C = 2 * rDZ - rMZ;
+
+     E = 1 - rMZ;
+
+run;
+
+ 
+
+proc print data = estimates noobs;
+
+     format rMZ rDZ 5.2 A C E percent5.1;
+
+run;
+
+ 
+
+*/
+</script>
+<body onload = "init();">
+</body>
+</html>
+
